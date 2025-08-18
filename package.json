@@ -3,7 +3,6 @@
   "private": true,
   "workspaces": ["backend", "frontend"],
   "scripts": {
-    "install-all": "npm install --workspaces",
     "start-backend": "npm --workspace backend start",
     "start-frontend": "npm --workspace frontend start",
     "start": "npm run start-backend & npm run start-frontend"

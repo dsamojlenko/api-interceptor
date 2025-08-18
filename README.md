@@ -19,13 +19,13 @@ A local web service for mocking, intercepting, and logging API requests. Inspire
 ### Install dependencies
 From the project root:
 ```
-npm run install-all
+npm install
 ```
 
 ### Run the servers
 From the project root:
 ```
-npm run start-all
+npm run start
 ```
 - Backend runs on [http://localhost:4000](http://localhost:4000)
 - Frontend runs on [http://localhost:4001](http://localhost:4001)
