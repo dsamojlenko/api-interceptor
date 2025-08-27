@@ -256,45 +256,152 @@ function App() {
         </div>
       </form>
       <h3>Defined Endpoints</h3>
-      <ul className="endpoints-list">
-        {endpoints.map((e, i) => (
-          <li key={i}>
-            <span style={{ cursor: 'pointer', textDecoration: 'underline', color: '#2563eb' }} onClick={() => {
-              setForm({
-                method: e.method,
-                path: e.path,
-                response: typeof e.response === 'string' ? e.response : JSON.stringify(e.response, null, 2),
-                status: e.status,
-                delay: e.delay,
-                error: e.error
-              });
+      <div className="endpoints-list">
+        {endpoints.length === 0 ? (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '40px 20px', 
+            color: '#6b7280', 
+            fontStyle: 'italic',
+            background: '#f9fafb',
+            borderRadius: '8px',
+            border: '1px dashed #d1d5db'
+          }}>
+            No endpoints defined yet. Create your first endpoint above.
+          </div>
+        ) : (
+          endpoints.map((e, i) => (
+            <div key={i} className="endpoint-card" style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '12px',
+              background: '#fff',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s ease-in-out'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span 
+                    style={{ 
+                      background: e.method === 'GET' ? '#10b981' : 
+                                 e.method === 'POST' ? '#3b82f6' : 
+                                 e.method === 'PUT' ? '#f59e0b' : 
+                                 e.method === 'DELETE' ? '#ef4444' : '#6b7280',
+                      color: '#fff',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      minWidth: '60px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {e.method}
+                  </span>
+                  <span 
+                    style={{ 
+                      cursor: 'pointer', 
+                      fontWeight: '600',
+                      color: '#1f2937',
+                      fontSize: '1rem'
+                    }} 
+                    onClick={() => {
+                      setForm({
+                        method: e.method,
+                        path: e.path,
+                        response: typeof e.response === 'string' ? e.response : JSON.stringify(e.response, null, 2),
+                        status: e.status,
+                        delay: e.delay,
+                        error: e.error
+                      });
+                      
+                      // Set up weighted responses if they exist
+                      if (e.weightedResponses && e.weightedResponses.length > 0) {
+                        setWeightedResponses(e.weightedResponses.map(wr => ({
+                          response: typeof wr.response === 'string' ? wr.response : JSON.stringify(wr.response, null, 2),
+                          status: wr.status,
+                          weight: wr.weight,
+                          delay: wr.delay || 0,
+                          error: wr.error
+                        })));
+                        setActiveTab('weighted');
+                      } else {
+                        setWeightedResponses([]);
+                        setActiveTab('single');
+                      }
+                      
+                      setEditing(true);
+                    }}
+                  >
+                    {e.path}
+                  </span>
+                </div>
+                <button 
+                  style={{ 
+                    background: '#ef4444', 
+                    color: '#fff', 
+                    border: 'none', 
+                    borderRadius: '6px', 
+                    padding: '6px 12px', 
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }} 
+                  onClick={() => handleDelete(e.method, e.path)}
+                >
+                  Delete
+                </button>
+              </div>
               
-              // Set up weighted responses if they exist
-              if (e.weightedResponses && e.weightedResponses.length > 0) {
-                setWeightedResponses(e.weightedResponses.map(wr => ({
-                  response: typeof wr.response === 'string' ? wr.response : JSON.stringify(wr.response, null, 2),
-                  status: wr.status,
-                  weight: wr.weight,
-                  delay: wr.delay || 0,
-                  error: wr.error
-                })));
-                setActiveTab('weighted');
-              } else {
-                setWeightedResponses([]);
-                setActiveTab('single');
-              }
-              
-              setEditing(true);
-            }}>{e.method} <b>{e.path}</b></span> → Status: {e.status}, Delay: {e.delay}ms, Error: {e.error ? 'Yes' : 'No'}
-            {e.weightedResponses && e.weightedResponses.length > 0 && (
-              <span style={{ marginLeft: 8, padding: '2px 6px', background: '#dbeafe', color: '#1d4ed8', borderRadius: '4px', fontSize: '0.8em' }}>
-                {e.weightedResponses.length} weighted responses
-              </span>
-            )}
-            <button style={{ marginLeft: 12, background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 10px', cursor: 'pointer' }} onClick={() => handleDelete(e.method, e.path)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                <span style={{ 
+                  background: '#f3f4f6', 
+                  color: '#374151', 
+                  padding: '2px 8px', 
+                  borderRadius: '12px', 
+                  fontSize: '0.75rem',
+                  fontWeight: '500'
+                }}>
+                  Status: {e.status}
+                </span>
+                <span style={{ 
+                  background: '#f3f4f6', 
+                  color: '#374151', 
+                  padding: '2px 8px', 
+                  borderRadius: '12px', 
+                  fontSize: '0.75rem',
+                  fontWeight: '500'
+                }}>
+                  Delay: {e.delay}ms
+                </span>
+                <span style={{ 
+                  background: e.error ? '#fef2f2' : '#f0fdf4', 
+                  color: e.error ? '#dc2626' : '#16a34a', 
+                  padding: '2px 8px', 
+                  borderRadius: '12px', 
+                  fontSize: '0.75rem',
+                  fontWeight: '500'
+                }}>
+                  {e.error ? 'Error Response' : 'Success Response'}
+                </span>
+                {e.weightedResponses && e.weightedResponses.length > 0 && (
+                  <span style={{ 
+                    background: '#dbeafe', 
+                    color: '#1d4ed8', 
+                    padding: '2px 8px', 
+                    borderRadius: '12px', 
+                    fontSize: '0.75rem',
+                    fontWeight: '500'
+                  }}>
+                    {e.weightedResponses.length} weighted responses
+                  </span>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
       <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         Recent Logs
         <button style={{ background: '#f59e42', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 14px', cursor: 'pointer', fontSize: '0.95rem' }} onClick={handleClearLogs}>Clear Logs</button>
