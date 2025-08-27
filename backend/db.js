@@ -18,6 +18,16 @@ CREATE TABLE IF NOT EXISTS endpoints (
   delay INTEGER,
   error INTEGER
 );
+CREATE TABLE IF NOT EXISTS weighted_responses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  endpoint_id INTEGER,
+  response TEXT,
+  status INTEGER,
+  weight INTEGER,
+  delay INTEGER,
+  error INTEGER,
+  FOREIGN KEY (endpoint_id) REFERENCES endpoints (id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   timestamp TEXT,

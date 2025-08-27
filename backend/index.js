@@ -23,28 +23,95 @@ app.use((req, res, next) => {
   });
 });
 
+// Helper function to select response based on weights
+function selectWeightedResponse(responses) {
+  if (responses.length === 0) return null;
+  if (responses.length === 1) return responses[0];
+  
+  const totalWeight = responses.reduce((sum, r) => sum + r.weight, 0);
+  if (totalWeight === 0) return responses[Math.floor(Math.random() * responses.length)];
+  
+  const random = Math.random() * totalWeight;
+  let currentWeight = 0;
+  
+  for (const response of responses) {
+    currentWeight += response.weight;
+    if (random <= currentWeight) {
+      return response;
+    }
+  }
+  
+  return responses[responses.length - 1]; // fallback
+}
+
 // API to get all endpoints
 app.get('/api/endpoints', (req, res) => {
-  const rows = db.prepare('SELECT method, path, response, status, delay, error FROM endpoints').all();
-  // Parse response from string to object if possible
-  rows.forEach(r => {
+  const rows = db.prepare('SELECT id, method, path, response, status, delay, error FROM endpoints').all();
+  
+  // Get weighted responses for each endpoint
+  rows.forEach(row => {
+    const weightedResponses = db.prepare('SELECT response, status, weight, delay, error FROM weighted_responses WHERE endpoint_id = ?').all(row.id);
+    
+    // Parse response from string to object if possible
     try {
-      r.response = JSON.parse(r.response);
+      row.response = JSON.parse(row.response);
     } catch {
       // leave as string
     }
-    r.error = !!r.error;
+    row.error = !!row.error;
+    
+    // Parse weighted responses
+    row.weightedResponses = weightedResponses.map(wr => {
+      try {
+        wr.response = JSON.parse(wr.response);
+      } catch {
+        // leave as string
+      }
+      wr.error = !!wr.error;
+      return wr;
+    });
   });
+  
   res.json(rows);
 });
 
 // API to add/update an endpoint
 app.post('/api/endpoints', (req, res) => {
-  const { method, path, response, status = 200, delay = 0, error = false } = req.body;
-  // Remove any existing endpoint with same method/path
-  db.prepare('DELETE FROM endpoints WHERE method = ? AND path = ?').run(method, path);
-  db.prepare('INSERT INTO endpoints (method, path, response, status, delay, error) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(method, path, typeof response === 'string' ? response : JSON.stringify(response), status, delay, error ? 1 : 0);
+  const { method, path, response, status = 200, delay = 0, error = false, weightedResponses = [] } = req.body;
+  
+  // Start transaction
+  const transaction = db.transaction(() => {
+    // Remove any existing endpoint with same method/path
+    const existingEndpoint = db.prepare('SELECT id FROM endpoints WHERE method = ? AND path = ?').get(method, path);
+    if (existingEndpoint) {
+      db.prepare('DELETE FROM weighted_responses WHERE endpoint_id = ?').run(existingEndpoint.id);
+      db.prepare('DELETE FROM endpoints WHERE id = ?').run(existingEndpoint.id);
+    }
+    
+    // Insert new endpoint
+    const result = db.prepare('INSERT INTO endpoints (method, path, response, status, delay, error) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(method, path, typeof response === 'string' ? response : JSON.stringify(response), status, delay, error ? 1 : 0);
+    
+    const endpointId = result.lastInsertRowid;
+    
+    // Insert weighted responses if provided
+    if (weightedResponses && weightedResponses.length > 0) {
+      const insertWeightedResponse = db.prepare('INSERT INTO weighted_responses (endpoint_id, response, status, weight, delay, error) VALUES (?, ?, ?, ?, ?, ?)');
+      
+      for (const wr of weightedResponses) {
+        insertWeightedResponse.run(
+          endpointId,
+          typeof wr.response === 'string' ? wr.response : JSON.stringify(wr.response),
+          wr.status || 200,
+          wr.weight || 1,
+          wr.delay || 0,
+          wr.error ? 1 : 0
+        );
+      }
+    }
+  });
+  
+  transaction();
   res.json({ success: true });
 });
 
@@ -75,8 +142,20 @@ app.delete('/api/logs', (req, res) => {
 // API to delete an endpoint
 app.delete('/api/endpoints', (req, res) => {
   const { method, path } = req.body;
-  const info = db.prepare('DELETE FROM endpoints WHERE method = ? AND path = ?').run(method, path);
-  res.json({ success: info.changes > 0 });
+  
+  // Start transaction to delete endpoint and its weighted responses
+  const transaction = db.transaction(() => {
+    const endpoint = db.prepare('SELECT id FROM endpoints WHERE method = ? AND path = ?').get(method, path);
+    if (endpoint) {
+      db.prepare('DELETE FROM weighted_responses WHERE endpoint_id = ?').run(endpoint.id);
+      const info = db.prepare('DELETE FROM endpoints WHERE id = ?').run(endpoint.id);
+      return info.changes > 0;
+    }
+    return false;
+  });
+  
+  const success = transaction();
+  res.json({ success });
 });
 
 // Catch-all for dynamic endpoints
@@ -125,32 +204,41 @@ app.all('*', (req, res) => {
     );
 
   if (endpoint) {
-    if (endpoint.delay > 0) {
-      setTimeout(() => {
-        if (endpoint.error) {
-          res.status(endpoint.status).json({ error: endpoint.response });
-        } else {
-          let resp;
-          try {
-            resp = JSON.parse(endpoint.response);
-          } catch {
-            resp = endpoint.response;
-          }
-          res.status(endpoint.status).json(resp);
-        }
-      }, endpoint.delay);
+    // Check for weighted responses first
+    const weightedResponses = db.prepare('SELECT response, status, weight, delay, error FROM weighted_responses WHERE endpoint_id = ?').all(endpoint.id);
+    
+    let selectedResponse;
+    if (weightedResponses.length > 0) {
+      selectedResponse = selectWeightedResponse(weightedResponses);
     } else {
-      if (endpoint.error) {
-        res.status(endpoint.status).json({ error: endpoint.response });
+      // Use the default endpoint response
+      selectedResponse = {
+        response: endpoint.response,
+        status: endpoint.status,
+        delay: endpoint.delay,
+        error: endpoint.error
+      };
+    }
+    
+    const handleResponse = () => {
+      if (selectedResponse.error) {
+        res.status(selectedResponse.status).json({ error: selectedResponse.response });
       } else {
         let resp;
         try {
-          resp = JSON.parse(endpoint.response);
+          resp = JSON.parse(selectedResponse.response);
         } catch {
-          resp = endpoint.response;
+          resp = selectedResponse.response;
         }
-        res.status(endpoint.status).json(resp);
+        res.status(selectedResponse.status).json(resp);
       }
+    };
+    
+    const delay = selectedResponse.delay || 0;
+    if (delay > 0) {
+      setTimeout(handleResponse, delay);
+    } else {
+      handleResponse();
     }
   } else {
     res.status(404).json({ error: 'Endpoint not found' });

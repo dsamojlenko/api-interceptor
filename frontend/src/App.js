@@ -6,8 +6,11 @@ function App() {
   const [endpoints, setEndpoints] = useState([]);
   const [logs, setLogs] = useState([]);
   const [form, setForm] = useState({ method: 'GET', path: '', response: '', status: 200, delay: 0, error: false });
+  const [weightedResponses, setWeightedResponses] = useState([]);
   const [editing, setEditing] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
+  const [showWeightedResponses, setShowWeightedResponses] = useState(false);
+  const [activeTab, setActiveTab] = useState('single'); // 'single' or 'weighted'
 
   useEffect(() => {
     fetchEndpoints();
@@ -41,10 +44,19 @@ function App() {
     } catch {
       response = form.response;
     }
-    await axios.post('http://localhost:4000/api/endpoints', { ...form, response });
+    
+    const payload = { 
+      ...form, 
+      response,
+      weightedResponses: activeTab === 'weighted' ? weightedResponses : []
+    };
+    
+    await axios.post('http://localhost:4000/api/endpoints', payload);
     fetchEndpoints();
     setEditing(false);
     setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0, error: false });
+    setWeightedResponses([]);
+    setActiveTab('single');
   };
 
   const handleDelete = async (method, path) => {
@@ -57,6 +69,21 @@ function App() {
   const handleClearLogs = async () => {
     await axios.delete('http://localhost:4000/api/logs');
     fetchLogs();
+  };
+
+  const addWeightedResponse = () => {
+    setWeightedResponses([...weightedResponses, { response: '', status: 200, weight: 1, delay: 0, error: false }]);
+  };
+
+  const removeWeightedResponse = (index) => {
+    setWeightedResponses(weightedResponses.filter((_, i) => i !== index));
+  };
+
+  const updateWeightedResponse = (index, field, value) => {
+    const updated = [...weightedResponses];
+    updated[index][field] = field === 'weight' || field === 'status' || field === 'delay' ? parseInt(value) || 0 : 
+                            field === 'error' ? value : value;
+    setWeightedResponses(updated);
   };
 
   useEffect(() => {
@@ -85,24 +112,147 @@ function App() {
           <label>Path:
             <input name="path" value={form.path} onChange={handleChange} placeholder="/api/test" required />
           </label>
-          <label>Status:
-            <input name="status" type="number" value={form.status} onChange={handleChange} />
-          </label>
-          <label>Delay (ms):
-            <input name="delay" type="number" value={form.delay} onChange={handleChange} />
-          </label>
-          <label>Error:
-            <input name="error" type="checkbox" checked={form.error} onChange={handleChange} />
-          </label>
         </div>
-        <div className="form-row">
-          <label style={{ flex: 1 }}>Response (JSON or string):
-            <textarea name="response" value={form.response} onChange={handleChange} rows={3} style={{ width: '100%' }} />
-          </label>
+        
+        {/* Tab Navigation */}
+        <div className="tab-navigation" style={{ marginBottom: '20px', borderBottom: '1px solid #ddd' }}>
+          <button 
+            type="button"
+            className={`tab-button ${activeTab === 'single' ? 'active' : ''}`}
+            style={{
+              padding: '10px 20px',
+              border: 'none',
+              background: activeTab === 'single' ? '#2563eb' : '#f3f4f6',
+              color: activeTab === 'single' ? '#fff' : '#374151',
+              cursor: 'pointer',
+              marginRight: '2px',
+              borderRadius: '4px 4px 0 0'
+            }}
+            onClick={() => setActiveTab('single')}
+          >
+            Single Response
+          </button>
+          <button 
+            type="button"
+            className={`tab-button ${activeTab === 'weighted' ? 'active' : ''}`}
+            style={{
+              padding: '10px 20px',
+              border: 'none',
+              background: activeTab === 'weighted' ? '#2563eb' : '#f3f4f6',
+              color: activeTab === 'weighted' ? '#fff' : '#374151',
+              cursor: 'pointer',
+              borderRadius: '4px 4px 0 0'
+            }}
+            onClick={() => setActiveTab('weighted')}
+          >
+            Weighted Responses
+          </button>
         </div>
+
+        {/* Single Response Tab */}
+        {activeTab === 'single' && (
+          <div className="single-response-tab">
+            <div className="form-row">
+              <label>Status:
+                <input name="status" type="number" value={form.status} onChange={handleChange} />
+              </label>
+              <label>Delay (ms):
+                <input name="delay" type="number" value={form.delay} onChange={handleChange} />
+              </label>
+              <label>Error:
+                <input name="error" type="checkbox" checked={form.error} onChange={handleChange} />
+              </label>
+            </div>
+            <div className="form-row">
+              <label style={{ flex: 1 }}>Response (JSON or string):
+                <textarea name="response" value={form.response} onChange={handleChange} rows={3} style={{ width: '100%' }} />
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* Weighted Responses Tab */}
+        {activeTab === 'weighted' && (
+          <div className="weighted-responses-tab">
+            <p style={{ fontSize: '0.9em', color: '#666', margin: '0 0 15px 0' }}>
+              Define multiple responses with weights to control their probability of being returned.
+            </p>
+            {weightedResponses.map((wr, index) => (
+              <div key={index} className="weighted-response-item" style={{ border: '1px solid #ddd', padding: '15px', marginBottom: '15px', borderRadius: '6px', background: '#f9fafb' }}>
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                  <label>Status:
+                    <input 
+                      type="number" 
+                      value={wr.status} 
+                      onChange={(e) => updateWeightedResponse(index, 'status', e.target.value)}
+                      style={{ width: '80px' }}
+                    />
+                  </label>
+                  <label>Weight:
+                    <input 
+                      type="number" 
+                      value={wr.weight} 
+                      onChange={(e) => updateWeightedResponse(index, 'weight', e.target.value)}
+                      style={{ width: '80px' }}
+                      min="1"
+                    />
+                  </label>
+                  <label>Delay (ms):
+                    <input 
+                      type="number" 
+                      value={wr.delay} 
+                      onChange={(e) => updateWeightedResponse(index, 'delay', e.target.value)}
+                      style={{ width: '100px' }}
+                      min="0"
+                    />
+                  </label>
+                  <label>Error:
+                    <input 
+                      type="checkbox" 
+                      checked={wr.error} 
+                      onChange={(e) => updateWeightedResponse(index, 'error', e.target.checked)}
+                    />
+                  </label>
+                  <button 
+                    type="button" 
+                    onClick={() => removeWeightedResponse(index)}
+                    style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', height: 'fit-content' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <label>Response (JSON or string):
+                  <textarea 
+                    value={wr.response} 
+                    onChange={(e) => updateWeightedResponse(index, 'response', e.target.value)}
+                    rows={3} 
+                    style={{ width: '100%', marginTop: '5px' }}
+                  />
+                </label>
+              </div>
+            ))}
+            <button 
+              type="button" 
+              onClick={addWeightedResponse}
+              style={{ background: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 20px', marginBottom: '15px' }}
+            >
+              Add Weighted Response
+            </button>
+            {weightedResponses.length === 0 && (
+              <p style={{ color: '#6b7280', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
+                No weighted responses defined. Click "Add Weighted Response" to get started.
+              </p>
+            )}
+          </div>
+        )}
         <div className="form-row">
           <button type="submit">{editing ? 'Update Endpoint' : 'Add Endpoint'}</button>
-          {editing && <button type="button" style={{ marginLeft: 10, background: '#64748b' }} onClick={() => { setEditing(false); setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0, error: false }); }}>Cancel</button>}
+          {editing && <button type="button" style={{ marginLeft: 10, background: '#64748b' }} onClick={() => { 
+            setEditing(false); 
+            setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0, error: false }); 
+            setWeightedResponses([]);
+            setActiveTab('single');
+          }}>Cancel</button>}
         </div>
       </form>
       <h3>Defined Endpoints</h3>
@@ -118,8 +268,29 @@ function App() {
                 delay: e.delay,
                 error: e.error
               });
+              
+              // Set up weighted responses if they exist
+              if (e.weightedResponses && e.weightedResponses.length > 0) {
+                setWeightedResponses(e.weightedResponses.map(wr => ({
+                  response: typeof wr.response === 'string' ? wr.response : JSON.stringify(wr.response, null, 2),
+                  status: wr.status,
+                  weight: wr.weight,
+                  delay: wr.delay || 0,
+                  error: wr.error
+                })));
+                setActiveTab('weighted');
+              } else {
+                setWeightedResponses([]);
+                setActiveTab('single');
+              }
+              
               setEditing(true);
             }}>{e.method} <b>{e.path}</b></span> → Status: {e.status}, Delay: {e.delay}ms, Error: {e.error ? 'Yes' : 'No'}
+            {e.weightedResponses && e.weightedResponses.length > 0 && (
+              <span style={{ marginLeft: 8, padding: '2px 6px', background: '#dbeafe', color: '#1d4ed8', borderRadius: '4px', fontSize: '0.8em' }}>
+                {e.weightedResponses.length} weighted responses
+              </span>
+            )}
             <button style={{ marginLeft: 12, background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 10px', cursor: 'pointer' }} onClick={() => handleDelete(e.method, e.path)}>Delete</button>
           </li>
         ))}
