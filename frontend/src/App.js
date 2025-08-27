@@ -165,7 +165,7 @@ function App() {
             </div>
             <div className="form-row">
               <label style={{ flex: 1 }}>Response (JSON or string):
-                <textarea name="response" value={form.response} onChange={handleChange} rows={3} style={{ width: '100%' }} />
+                <textarea name="response" value={form.response} onChange={handleChange} rows={3} style={{ width: '100%', boxSizing: 'border-box' }} />
               </label>
             </div>
           </div>
@@ -226,7 +226,7 @@ function App() {
                     value={wr.response} 
                     onChange={(e) => updateWeightedResponse(index, 'response', e.target.value)}
                     rows={3} 
-                    style={{ width: '100%', marginTop: '5px' }}
+                    style={{ width: '100%', marginTop: '5px', boxSizing: 'border-box' }}
                   />
                 </label>
               </div>
