@@ -46,11 +46,11 @@ function selectWeightedResponse(responses) {
 
 // API to get all endpoints
 app.get('/api/endpoints', (req, res) => {
-  const rows = db.prepare('SELECT id, method, path, response, status, delay, error FROM endpoints').all();
+  const rows = db.prepare('SELECT id, method, path, response, status, delay FROM endpoints').all();
   
   // Get weighted responses for each endpoint
   rows.forEach(row => {
-    const weightedResponses = db.prepare('SELECT response, status, weight, delay, error FROM weighted_responses WHERE endpoint_id = ?').all(row.id);
+    const weightedResponses = db.prepare('SELECT response, status, weight, delay FROM weighted_responses WHERE endpoint_id = ?').all(row.id);
     
     // Parse response from string to object if possible
     try {
@@ -58,7 +58,6 @@ app.get('/api/endpoints', (req, res) => {
     } catch {
       // leave as string
     }
-    row.error = !!row.error;
     
     // Parse weighted responses
     row.weightedResponses = weightedResponses.map(wr => {
@@ -67,7 +66,6 @@ app.get('/api/endpoints', (req, res) => {
       } catch {
         // leave as string
       }
-      wr.error = !!wr.error;
       return wr;
     });
   });
@@ -77,7 +75,7 @@ app.get('/api/endpoints', (req, res) => {
 
 // API to add/update an endpoint
 app.post('/api/endpoints', (req, res) => {
-  const { method, path, response, status = 200, delay = 0, error = false, weightedResponses = [] } = req.body;
+  const { method, path, response, status = 200, delay = 0, weightedResponses = [] } = req.body;
   
   // Start transaction
   const transaction = db.transaction(() => {
@@ -89,14 +87,14 @@ app.post('/api/endpoints', (req, res) => {
     }
     
     // Insert new endpoint
-    const result = db.prepare('INSERT INTO endpoints (method, path, response, status, delay, error) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(method, path, typeof response === 'string' ? response : JSON.stringify(response), status, delay, error ? 1 : 0);
+    const result = db.prepare('INSERT INTO endpoints (method, path, response, status, delay) VALUES (?, ?, ?, ?, ?)')
+      .run(method, path, typeof response === 'string' ? response : JSON.stringify(response), status, delay);
     
     const endpointId = result.lastInsertRowid;
     
     // Insert weighted responses if provided
     if (weightedResponses && weightedResponses.length > 0) {
-      const insertWeightedResponse = db.prepare('INSERT INTO weighted_responses (endpoint_id, response, status, weight, delay, error) VALUES (?, ?, ?, ?, ?, ?)');
+      const insertWeightedResponse = db.prepare('INSERT INTO weighted_responses (endpoint_id, response, status, weight, delay) VALUES (?, ?, ?, ?, ?)');
       
       for (const wr of weightedResponses) {
         insertWeightedResponse.run(
@@ -104,8 +102,7 @@ app.post('/api/endpoints', (req, res) => {
           typeof wr.response === 'string' ? wr.response : JSON.stringify(wr.response),
           wr.status || 200,
           wr.weight || 1,
-          wr.delay || 0,
-          wr.error ? 1 : 0
+          wr.delay || 0
         );
       }
     }
@@ -160,7 +157,7 @@ app.delete('/api/endpoints', (req, res) => {
 
 // Catch-all for dynamic endpoints
 app.all('*', (req, res) => {
-  const endpoint = db.prepare('SELECT * FROM endpoints WHERE method = ? AND path = ?').get(req.method, req.path);
+  const endpoint = db.prepare('SELECT id, method, path, response, status, delay FROM endpoints WHERE method = ? AND path = ?').get(req.method, req.path);
   if (endpoint) {
     console.log(endpoint.path);
   }
@@ -205,7 +202,7 @@ app.all('*', (req, res) => {
 
   if (endpoint) {
     // Check for weighted responses first
-    const weightedResponses = db.prepare('SELECT response, status, weight, delay, error FROM weighted_responses WHERE endpoint_id = ?').all(endpoint.id);
+    const weightedResponses = db.prepare('SELECT response, status, weight, delay FROM weighted_responses WHERE endpoint_id = ?').all(endpoint.id);
     
     let selectedResponse;
     if (weightedResponses.length > 0) {
@@ -215,23 +212,18 @@ app.all('*', (req, res) => {
       selectedResponse = {
         response: endpoint.response,
         status: endpoint.status,
-        delay: endpoint.delay,
-        error: endpoint.error
+        delay: endpoint.delay
       };
     }
     
     const handleResponse = () => {
-      if (selectedResponse.error) {
-        res.status(selectedResponse.status).json({ error: selectedResponse.response });
-      } else {
-        let resp;
-        try {
-          resp = JSON.parse(selectedResponse.response);
-        } catch {
-          resp = selectedResponse.response;
-        }
-        res.status(selectedResponse.status).json(resp);
+      let resp;
+      try {
+        resp = JSON.parse(selectedResponse.response);
+      } catch {
+        resp = selectedResponse.response;
       }
+      res.status(selectedResponse.status).json(resp);
     };
     
     const delay = selectedResponse.delay || 0;

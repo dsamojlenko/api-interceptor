@@ -5,7 +5,7 @@ import './App.css';
 function App() {
   const [endpoints, setEndpoints] = useState([]);
   const [logs, setLogs] = useState([]);
-  const [form, setForm] = useState({ method: 'GET', path: '', response: '', status: 200, delay: 0, error: false });
+  const [form, setForm] = useState({ method: 'GET', path: '', response: '', status: 200, delay: 0 });
   const [weightedResponses, setWeightedResponses] = useState([]);
   const [editing, setEditing] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
@@ -54,7 +54,7 @@ function App() {
     await axios.post('http://localhost:4000/api/endpoints', payload);
     fetchEndpoints();
     setEditing(false);
-    setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0, error: false });
+    setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0 });
     setWeightedResponses([]);
     setActiveTab('single');
   };
@@ -72,7 +72,7 @@ function App() {
   };
 
   const addWeightedResponse = () => {
-    setWeightedResponses([...weightedResponses, { response: '', status: 200, weight: 1, delay: 0, error: false }]);
+    setWeightedResponses([...weightedResponses, { response: '', status: 200, weight: 1, delay: 0 }]);
   };
 
   const removeWeightedResponse = (index) => {
@@ -81,8 +81,7 @@ function App() {
 
   const updateWeightedResponse = (index, field, value) => {
     const updated = [...weightedResponses];
-    updated[index][field] = field === 'weight' || field === 'status' || field === 'delay' ? parseInt(value) || 0 : 
-                            field === 'error' ? value : value;
+    updated[index][field] = field === 'weight' || field === 'status' || field === 'delay' ? parseInt(value) || 0 : value;
     setWeightedResponses(updated);
   };
 
@@ -170,16 +169,6 @@ function App() {
                   className="form-input"
                 />
               </label>
-              <label className="form-label checkbox">
-                <input 
-                  name="error" 
-                  type="checkbox" 
-                  checked={form.error} 
-                  onChange={handleChange}
-                  className="form-checkbox"
-                />
-                <span className="form-label-text">Error Response</span>
-              </label>
             </div>
             <div className="form-row">
               <label className="form-label full-width">
@@ -234,15 +223,6 @@ function App() {
                       className="form-input"
                     />
                   </label>
-                  <label className="form-label checkbox">
-                    <input 
-                      type="checkbox" 
-                      checked={wr.error} 
-                      onChange={(e) => updateWeightedResponse(index, 'error', e.target.checked)}
-                      className="form-checkbox"
-                    />
-                    <span className="form-label-text">Error Response</span>
-                  </label>
                   <button 
                     type="button" 
                     onClick={() => removeWeightedResponse(index)}
@@ -289,7 +269,7 @@ function App() {
               className="btn secondary"
               onClick={() => { 
                 setEditing(false); 
-                setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0, error: false }); 
+                setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0 }); 
                 setWeightedResponses([]);
                 setActiveTab('single');
               }}
@@ -321,8 +301,7 @@ function App() {
                         path: e.path,
                         response: typeof e.response === 'string' ? e.response : JSON.stringify(e.response, null, 2),
                         status: e.status,
-                        delay: e.delay,
-                        error: e.error
+                        delay: e.delay
                       });
                       
                       // Set up weighted responses if they exist
@@ -331,8 +310,7 @@ function App() {
                           response: typeof wr.response === 'string' ? wr.response : JSON.stringify(wr.response, null, 2),
                           status: wr.status,
                           weight: wr.weight,
-                          delay: wr.delay || 0,
-                          error: wr.error
+                          delay: wr.delay || 0
                         })));
                         setActiveTab('weighted');
                       } else {
@@ -355,15 +333,47 @@ function App() {
               </div>
               
               <div className="endpoint-tags">
-                <span className="tag status">
-                  Status: {e.status}
-                </span>
-                <span className="tag status">
-                  Delay: {e.delay}ms
-                </span>
-                <span className={`tag ${e.error ? 'error' : 'success'}`}>
-                  {e.error ? 'Error Response' : 'Success Response'}
-                </span>
+                {e.weightedResponses && e.weightedResponses.length > 0 ? (
+                  // For weighted responses, show summary information
+                  <>
+                    <span className="tag status">
+                      Status: {e.weightedResponses.map(wr => wr.status).join(', ')}
+                    </span>
+                    <span className="tag status">
+                      Delays: {e.weightedResponses.map(wr => `${wr.delay}ms`).join(', ')}
+                    </span>
+                  </>
+                ) : (
+                  // For single response, show the single values
+                  <>
+                    <span className="tag status">
+                      Status: {e.status}
+                    </span>
+                    <span className="tag status">
+                      Delay: {e.delay}ms
+                    </span>
+                  </>
+                )}
+                {e.weightedResponses && e.weightedResponses.length > 0 ? (
+                  // For weighted responses, analyze the mix of status codes
+                  (() => {
+                    const successCount = e.weightedResponses.filter(wr => wr.status < 400).length;
+                    const errorCount = e.weightedResponses.filter(wr => wr.status >= 400).length;
+                    
+                    if (successCount > 0 && errorCount > 0) {
+                      return <span className="tag mixed">Mixed Responses</span>;
+                    } else if (errorCount > 0) {
+                      return <span className="tag error">Error Responses</span>;
+                    } else {
+                      return <span className="tag success">Success Responses</span>;
+                    }
+                  })()
+                ) : (
+                  // For single response, use the single response status
+                  <span className={`tag ${e.status >= 400 ? 'error' : 'success'}`}>
+                    {e.status >= 400 ? 'Error Response' : 'Success Response'}
+                  </span>
+                )}
                 {e.weightedResponses && e.weightedResponses.length > 0 && (
                   <span className="tag weighted">
                     {e.weightedResponses.length} weighted responses
