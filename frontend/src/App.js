@@ -100,8 +100,14 @@ function App() {
       <h2>API Interceptor</h2>
       <form onSubmit={handleSubmit} className="endpoint-form">
         <div className="form-row">
-          <label>Method:
-            <select name="method" value={form.method} onChange={handleChange}>
+          <label className="form-label method">
+            <span className="form-label-text">Method:</span>
+            <select 
+              name="method" 
+              value={form.method} 
+              onChange={handleChange}
+              className="form-select"
+            >
               <option>GET</option>
               <option>POST</option>
               <option>PUT</option>
@@ -109,40 +115,31 @@ function App() {
               <option>PATCH</option>
             </select>
           </label>
-          <label>Path:
-            <input name="path" value={form.path} onChange={handleChange} placeholder="/api/test" required />
+          <label className="form-label path">
+            <span className="form-label-text">Path:</span>
+            <input 
+              name="path" 
+              value={form.path} 
+              onChange={handleChange} 
+              placeholder="/api/test" 
+              required 
+              className="form-input"
+            />
           </label>
         </div>
         
         {/* Tab Navigation */}
-        <div className="tab-navigation" style={{ marginBottom: '20px', borderBottom: '1px solid #ddd' }}>
+        <div className="tab-navigation">
           <button 
             type="button"
-            className={`tab-button ${activeTab === 'single' ? 'active' : ''}`}
-            style={{
-              padding: '10px 20px',
-              border: 'none',
-              background: activeTab === 'single' ? '#2563eb' : '#f3f4f6',
-              color: activeTab === 'single' ? '#fff' : '#374151',
-              cursor: 'pointer',
-              marginRight: '2px',
-              borderRadius: '4px 4px 0 0'
-            }}
+            className={`tab-button ${activeTab === 'single' ? 'active' : 'inactive'}`}
             onClick={() => setActiveTab('single')}
           >
             Single Response
           </button>
           <button 
             type="button"
-            className={`tab-button ${activeTab === 'weighted' ? 'active' : ''}`}
-            style={{
-              padding: '10px 20px',
-              border: 'none',
-              background: activeTab === 'weighted' ? '#2563eb' : '#f3f4f6',
-              color: activeTab === 'weighted' ? '#fff' : '#374151',
-              cursor: 'pointer',
-              borderRadius: '4px 4px 0 0'
-            }}
+            className={`tab-button ${activeTab === 'weighted' ? 'active' : 'inactive'}`}
             onClick={() => setActiveTab('weighted')}
           >
             Weighted Responses
@@ -153,19 +150,47 @@ function App() {
         {activeTab === 'single' && (
           <div className="single-response-tab">
             <div className="form-row">
-              <label>Status:
-                <input name="status" type="number" value={form.status} onChange={handleChange} />
+              <label className="form-label status">
+                <span className="form-label-text">Status:</span>
+                <input 
+                  name="status" 
+                  type="number" 
+                  value={form.status} 
+                  onChange={handleChange} 
+                  className="form-input"
+                />
               </label>
-              <label>Delay (ms):
-                <input name="delay" type="number" value={form.delay} onChange={handleChange} />
+              <label className="form-label delay">
+                <span className="form-label-text">Delay (ms):</span>
+                <input 
+                  name="delay" 
+                  type="number" 
+                  value={form.delay} 
+                  onChange={handleChange} 
+                  className="form-input"
+                />
               </label>
-              <label>Error:
-                <input name="error" type="checkbox" checked={form.error} onChange={handleChange} />
+              <label className="form-label checkbox">
+                <input 
+                  name="error" 
+                  type="checkbox" 
+                  checked={form.error} 
+                  onChange={handleChange}
+                  className="form-checkbox"
+                />
+                <span className="form-label-text">Error Response</span>
               </label>
             </div>
             <div className="form-row">
-              <label style={{ flex: 1 }}>Response (JSON or string):
-                <textarea name="response" value={form.response} onChange={handleChange} rows={3} style={{ width: '100%', boxSizing: 'border-box' }} />
+              <label className="form-label full-width">
+                <span className="form-label-text">Response (JSON or string):</span>
+                <textarea 
+                  name="response" 
+                  value={form.response} 
+                  onChange={handleChange} 
+                  rows={4} 
+                  className="form-textarea single-response"
+                />
               </label>
             </div>
           </div>
@@ -174,59 +199,65 @@ function App() {
         {/* Weighted Responses Tab */}
         {activeTab === 'weighted' && (
           <div className="weighted-responses-tab">
-            <p style={{ fontSize: '0.9em', color: '#666', margin: '0 0 15px 0' }}>
+            <p className="weighted-responses-description">
               Define multiple responses with weights to control their probability of being returned.
             </p>
             {weightedResponses.map((wr, index) => (
-              <div key={index} className="weighted-response-item" style={{ border: '1px solid #ddd', padding: '15px', marginBottom: '15px', borderRadius: '6px', background: '#f9fafb' }}>
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                  <label>Status:
+              <div key={index} className="weighted-response-item">
+                <div className="weighted-response-controls">
+                  <label className="form-label">
+                    <span className="form-label-text">Status:</span>
                     <input 
                       type="number" 
                       value={wr.status} 
                       onChange={(e) => updateWeightedResponse(index, 'status', e.target.value)}
-                      style={{ width: '80px' }}
+                      className="form-input"
                     />
                   </label>
-                  <label>Weight:
+                  <label className="form-label">
+                    <span className="form-label-text">Weight:</span>
                     <input 
                       type="number" 
                       value={wr.weight} 
                       onChange={(e) => updateWeightedResponse(index, 'weight', e.target.value)}
-                      style={{ width: '80px' }}
                       min="1"
+                      className="form-input"
                     />
                   </label>
-                  <label>Delay (ms):
+                  <label className="form-label delay">
+                    <span className="form-label-text">Delay (ms):</span>
                     <input 
                       type="number" 
                       value={wr.delay} 
                       onChange={(e) => updateWeightedResponse(index, 'delay', e.target.value)}
-                      style={{ width: '100px' }}
                       min="0"
+                      className="form-input"
                     />
                   </label>
-                  <label>Error:
+                  <label className="form-label checkbox">
                     <input 
                       type="checkbox" 
                       checked={wr.error} 
                       onChange={(e) => updateWeightedResponse(index, 'error', e.target.checked)}
+                      className="form-checkbox"
                     />
+                    <span className="form-label-text">Error Response</span>
                   </label>
                   <button 
                     type="button" 
                     onClick={() => removeWeightedResponse(index)}
-                    style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', height: 'fit-content' }}
+                    className="btn danger"
                   >
                     Remove
                   </button>
                 </div>
-                <label>Response (JSON or string):
+                <label className="form-label full-width">
+                  <span className="form-label-text">Response (JSON or string):</span>
                   <textarea 
                     value={wr.response} 
                     onChange={(e) => updateWeightedResponse(index, 'response', e.target.value)}
-                    rows={3} 
-                    style={{ width: '100%', marginTop: '5px', boxSizing: 'border-box' }}
+                    rows={4} 
+                    className="form-textarea weighted-response"
                   />
                 </label>
               </div>
@@ -234,78 +265,56 @@ function App() {
             <button 
               type="button" 
               onClick={addWeightedResponse}
-              style={{ background: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 20px', marginBottom: '15px' }}
+              className="btn success"
             >
               Add Weighted Response
             </button>
             {weightedResponses.length === 0 && (
-              <p style={{ color: '#6b7280', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
+              <div className="empty-state">
                 No weighted responses defined. Click "Add Weighted Response" to get started.
-              </p>
+              </div>
             )}
           </div>
         )}
-        <div className="form-row">
-          <button type="submit">{editing ? 'Update Endpoint' : 'Add Endpoint'}</button>
-          {editing && <button type="button" style={{ marginLeft: 10, background: '#64748b' }} onClick={() => { 
-            setEditing(false); 
-            setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0, error: false }); 
-            setWeightedResponses([]);
-            setActiveTab('single');
-          }}>Cancel</button>}
+        <div className="form-row submit-buttons">
+          <button 
+            type="submit"
+            className="btn primary"
+          >
+            {editing ? 'Update Endpoint' : 'Add Endpoint'}
+          </button>
+          {editing && (
+            <button 
+              type="button" 
+              className="btn secondary"
+              onClick={() => { 
+                setEditing(false); 
+                setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0, error: false }); 
+                setWeightedResponses([]);
+                setActiveTab('single');
+              }}
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </form>
       <h3>Defined Endpoints</h3>
       <div className="endpoints-list">
         {endpoints.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '40px 20px', 
-            color: '#6b7280', 
-            fontStyle: 'italic',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px dashed #d1d5db'
-          }}>
+          <div className="empty-state endpoints">
             No endpoints defined yet. Create your first endpoint above.
           </div>
         ) : (
           endpoints.map((e, i) => (
-            <div key={i} className="endpoint-card" style={{
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              padding: '16px',
-              marginBottom: '12px',
-              background: '#fff',
-              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-              transition: 'all 0.2s ease-in-out'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span 
-                    style={{ 
-                      background: e.method === 'GET' ? '#10b981' : 
-                                 e.method === 'POST' ? '#3b82f6' : 
-                                 e.method === 'PUT' ? '#f59e0b' : 
-                                 e.method === 'DELETE' ? '#ef4444' : '#6b7280',
-                      color: '#fff',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold',
-                      minWidth: '60px',
-                      textAlign: 'center'
-                    }}
-                  >
+            <div key={i} className="endpoint-card">
+              <div className="endpoint-header">
+                <div className="endpoint-info">
+                  <span className={`method-badge ${e.method.toLowerCase()}`}>
                     {e.method}
                   </span>
                   <span 
-                    style={{ 
-                      cursor: 'pointer', 
-                      fontWeight: '600',
-                      color: '#1f2937',
-                      fontSize: '1rem'
-                    }} 
+                    className="endpoint-path"
                     onClick={() => {
                       setForm({
                         method: e.method,
@@ -338,62 +347,25 @@ function App() {
                   </span>
                 </div>
                 <button 
-                  style={{ 
-                    background: '#ef4444', 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    padding: '6px 12px', 
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    fontWeight: '500'
-                  }} 
+                  className="btn danger small"
                   onClick={() => handleDelete(e.method, e.path)}
                 >
                   Delete
                 </button>
               </div>
               
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                <span style={{ 
-                  background: '#f3f4f6', 
-                  color: '#374151', 
-                  padding: '2px 8px', 
-                  borderRadius: '12px', 
-                  fontSize: '0.75rem',
-                  fontWeight: '500'
-                }}>
+              <div className="endpoint-tags">
+                <span className="tag status">
                   Status: {e.status}
                 </span>
-                <span style={{ 
-                  background: '#f3f4f6', 
-                  color: '#374151', 
-                  padding: '2px 8px', 
-                  borderRadius: '12px', 
-                  fontSize: '0.75rem',
-                  fontWeight: '500'
-                }}>
+                <span className="tag status">
                   Delay: {e.delay}ms
                 </span>
-                <span style={{ 
-                  background: e.error ? '#fef2f2' : '#f0fdf4', 
-                  color: e.error ? '#dc2626' : '#16a34a', 
-                  padding: '2px 8px', 
-                  borderRadius: '12px', 
-                  fontSize: '0.75rem',
-                  fontWeight: '500'
-                }}>
+                <span className={`tag ${e.error ? 'error' : 'success'}`}>
                   {e.error ? 'Error Response' : 'Success Response'}
                 </span>
                 {e.weightedResponses && e.weightedResponses.length > 0 && (
-                  <span style={{ 
-                    background: '#dbeafe', 
-                    color: '#1d4ed8', 
-                    padding: '2px 8px', 
-                    borderRadius: '12px', 
-                    fontSize: '0.75rem',
-                    fontWeight: '500'
-                  }}>
+                  <span className="tag weighted">
                     {e.weightedResponses.length} weighted responses
                   </span>
                 )}
@@ -402,9 +374,9 @@ function App() {
           ))
         )}
       </div>
-      <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <h3 className="logs-header">
         Recent Logs
-        <button style={{ background: '#f59e42', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 14px', cursor: 'pointer', fontSize: '0.95rem' }} onClick={handleClearLogs}>Clear Logs</button>
+        <button className="btn warning" onClick={handleClearLogs}>Clear Logs</button>
       </h3>
       <ul className="logs-list">
         {logs.map((log, i) => {
@@ -416,8 +388,8 @@ function App() {
           }
           return (
             <li key={i}>
-              <span style={{ color: '#888' }}>{log.timestamp}</span> <b>{log.method}</b> <span>{log.path}</span> <span style={{ color: '#555', fontSize: '0.95em' }}>{details?.userAgent}</span>
-              <button style={{ marginLeft: 12, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 10px', cursor: 'pointer' }} onClick={() => setSelectedLog({ ...log, details })}>View Details</button>
+              <span className="log-timestamp">{log.timestamp}</span> <b className="log-method">{log.method}</b> <span>{log.path}</span> <span className="log-user-agent">{details?.userAgent}</span>
+              <button className="btn info" onClick={() => setSelectedLog({ ...log, details })}>View Details</button>
             </li>
           );
         })}
@@ -434,7 +406,7 @@ function App() {
             <div><b>Query:</b> <pre>{JSON.stringify(selectedLog.details?.query, null, 2)}</pre></div>
             <div><b>Body:</b> <pre>{JSON.stringify(selectedLog.details?.body, null, 2)}</pre></div>
             <div><b>Headers:</b> <pre>{JSON.stringify(selectedLog.headers, null, 2)}</pre></div>
-            <button style={{ marginTop: 10, background: '#64748b', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 18px', cursor: 'pointer' }} onClick={() => setSelectedLog(null)}>Close</button>
+            <button className="btn close" onClick={() => setSelectedLog(null)}>Close</button>
           </div>
         </div>
       )}
