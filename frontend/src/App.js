@@ -11,6 +11,7 @@ function App() {
   const [selectedLog, setSelectedLog] = useState(null);
   const [showWeightedResponses, setShowWeightedResponses] = useState(false);
   const [activeTab, setActiveTab] = useState('single'); // 'single' or 'weighted'
+  const [weightsManuallyEdited, setWeightsManuallyEdited] = useState(false);
 
   useEffect(() => {
     fetchEndpoints();
@@ -36,8 +37,18 @@ function App() {
     setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const handleSubmit = async e => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate weighted responses weights add up to 100%
+    if (activeTab === 'weighted' && weightedResponses.length > 0) {
+      const totalWeight = weightedResponses.reduce((sum, wr) => sum + parseInt(wr.weight || 0), 0);
+      if (totalWeight !== 100) {
+        alert(`Weight validation error: Total weights must add up to 100%. Current total: ${totalWeight}%`);
+        return;
+      }
+    }
+    
     let response;
     try {
       response = JSON.parse(form.response);
@@ -56,6 +67,7 @@ function App() {
     setEditing(false);
     setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0 });
     setWeightedResponses([]);
+    setWeightsManuallyEdited(false);
     setActiveTab('single');
   };
 
@@ -72,16 +84,51 @@ function App() {
   };
 
   const addWeightedResponse = () => {
-    setWeightedResponses([...weightedResponses, { response: '', status: 200, weight: 1, delay: 0 }]);
+    const newResponse = { response: '', status: 200, weight: 0, delay: 0 };
+    const updatedResponses = [...weightedResponses, newResponse];
+    
+    if (!weightsManuallyEdited) {
+      // Auto-distribute weights evenly
+      const totalResponses = updatedResponses.length;
+      const baseWeight = Math.floor(100 / totalResponses);
+      const remainder = 100 % totalResponses;
+      
+      updatedResponses.forEach((response, index) => {
+        // Distribute remainder among the last few responses
+        response.weight = baseWeight + (index >= totalResponses - remainder ? 1 : 0);
+      });
+    }
+    
+    setWeightedResponses(updatedResponses);
   };
 
   const removeWeightedResponse = (index) => {
-    setWeightedResponses(weightedResponses.filter((_, i) => i !== index));
+    const updatedResponses = weightedResponses.filter((_, i) => i !== index);
+    
+    if (!weightsManuallyEdited && updatedResponses.length > 0) {
+      // Auto-redistribute weights evenly
+      const totalResponses = updatedResponses.length;
+      const baseWeight = Math.floor(100 / totalResponses);
+      const remainder = 100 % totalResponses;
+      
+      updatedResponses.forEach((response, i) => {
+        // Distribute remainder among the last few responses
+        response.weight = baseWeight + (i >= totalResponses - remainder ? 1 : 0);
+      });
+    }
+    
+    setWeightedResponses(updatedResponses);
   };
 
   const updateWeightedResponse = (index, field, value) => {
     const updated = [...weightedResponses];
     updated[index][field] = field === 'weight' || field === 'status' || field === 'delay' ? parseInt(value) || 0 : value;
+    
+    // Mark weights as manually edited if user changes a weight value
+    if (field === 'weight') {
+      setWeightsManuallyEdited(true);
+    }
+    
     setWeightedResponses(updated);
   };
 
@@ -139,7 +186,12 @@ function App() {
           <button 
             type="button"
             className={`tab-button ${activeTab === 'weighted' ? 'active' : 'inactive'}`}
-            onClick={() => setActiveTab('weighted')}
+            onClick={() => {
+              setActiveTab('weighted');
+              if (weightedResponses.length === 0) {
+                setWeightsManuallyEdited(false); // Reset flag when switching to empty weighted tab
+              }
+            }}
           >
             Weighted Responses
           </button>
@@ -249,6 +301,17 @@ function App() {
             >
               Add Weighted Response
             </button>
+            {weightedResponses.length > 0 && (
+              <div className={`weight-total ${
+                weightedResponses.reduce((sum, wr) => sum + parseInt(wr.weight || 0), 0) === 100 
+                  ? 'valid' : 'invalid'
+              }`}>
+                Total Weight: {weightedResponses.reduce((sum, wr) => sum + parseInt(wr.weight || 0), 0)}%
+                {weightedResponses.reduce((sum, wr) => sum + parseInt(wr.weight || 0), 0) !== 100 && (
+                  <span className="weight-warning"> (Must equal 100%)</span>
+                )}
+              </div>
+            )}
             {weightedResponses.length === 0 && (
               <div className="empty-state">
                 No weighted responses defined. Click "Add Weighted Response" to get started.
@@ -271,6 +334,7 @@ function App() {
                 setEditing(false); 
                 setForm({ method: 'GET', path: '', response: '', status: 200, delay: 0 }); 
                 setWeightedResponses([]);
+                setWeightsManuallyEdited(false);
                 setActiveTab('single');
               }}
             >
@@ -312,9 +376,11 @@ function App() {
                           weight: wr.weight,
                           delay: wr.delay || 0
                         })));
+                        setWeightsManuallyEdited(true); // Existing weights are considered manually set
                         setActiveTab('weighted');
                       } else {
                         setWeightedResponses([]);
+                        setWeightsManuallyEdited(false);
                         setActiveTab('single');
                       }
                       
